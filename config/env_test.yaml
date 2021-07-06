@@ -1,0 +1,6 @@
+defaults:
+  - env: sawyer_door_env
+
+env:
+  settings:
+    show_gui: True
