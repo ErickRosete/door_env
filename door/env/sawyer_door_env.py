@@ -86,6 +86,9 @@ class SawyerDoorEnv(gym.Env):
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         self.robot.reset()
         self.door.reset()
+        p.setJointMotorControl2(self.door.id, 1, controlMode=p.POSITION_CONTROL, 
+                                targetPosition=0, force=10)
+        self.lock_door()
         if self.show_gui:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
 
@@ -122,8 +125,22 @@ class SawyerDoorEnv(gym.Env):
         done, success  = self.get_termination()
         reward = 0
 
+        if self.locked and self.get_door_handle_angle() > 0.5:
+            self.unlock_door()
+
         info = {"door_handle_position": self.get_door_handle_position(), "success": success} 
         return observation, reward, done, info
+
+    def lock_door(self):
+        self.locked = True
+        p.setJointMotorControl2(self.door.id, 0, controlMode=p.POSITION_CONTROL, 
+                                targetPosition=0, force=float('inf'))
+
+    def unlock_door(self):
+        self.logger.info("Door unlocked")
+        self.locked = False
+        p.setJointMotorControl2(self.door.id, 0, controlMode=p.POSITION_CONTROL, 
+                                targetPosition=0, force=0)
 
     def load_door(self):
         door_urdf_path = pkg_path("../" + self.cfg.objects.door.urdf_path)
@@ -145,10 +162,8 @@ class SawyerDoorEnv(gym.Env):
         self.load_door()
     
     def get_termination(self):
-        done, success = False, False
-        forces = self.get_forces()
-        gw = self.get_gripper_width()    
-        if (forces > 0.20).all() and 0.05 < gw < 0.08:
+        done, success = False, False   
+        if self.get_door_angle() > 0.8:
             done, success = True, True
         return done, success
 
@@ -206,9 +221,14 @@ class SawyerDoorEnv(gym.Env):
         end_effector_position[2] -= 0.125
         return end_effector_position
 
-    # TODO
+    def get_door_angle(self):
+        return self.door.get_joint_states().joint_position[0]
+
+    def get_door_handle_angle(self):
+        return self.door.get_joint_states().joint_position[1]
+
     def get_door_handle_position(self):
-        return np.array([0, 0, 0])
+        return self.door.get_link_states().link_world_position[1]
 
     def close(self):
         p.disconnect(self.physics_client.id)

@@ -20,7 +20,8 @@ objects:
     use_fixed_base: True
 
 debug_camera:
-  cameraDistance: 0.6
-  cameraYaw: 15.
-  cameraPitch: -20.
-  cameraTargetPosition: [0.5, 0, 0.08]
+  cameraDistance: 1.0
+  cameraYaw: -20.
+
+settings:
+  max_episode_steps: 1000
